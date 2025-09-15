@@ -1,16 +1,10 @@
 #!/usr/bin/env bash
 
-# Force lib file reload
-FORCE_RELOAD=0
-if [[ "$1" == "-f" ]]; then
-    FORCE_RELOAD=1
-fi
+# Get current date in YYYY-MM-DD_HH-MM-SS format
+log_file_current_date=$(date '+%Y-%m-%d')
 
-# Load lib file
-if [[ -n "$LOGGINGLIB_LOADED" && $FORCE_RELOAD -eq 0 ]]; then
-    return 0
-fi
-LOGGINGLIB_LOADED=1
+# Log files with fallback
+log_file="${LOG_FILE:-$HOME/mcsm/log/${log_file_current_date}.log}"
 
 # color
 BLUE='\033[0;34m'
@@ -18,53 +12,24 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+# ====================================== Lib function ====================================== #
 
-
-# Lib Function
+# Core log function
 LogMessage() {
     local level="$1"
     local msg="$2"
-    local file="$3"
     local timestamp
     timestamp=$(date '+%H:%M:%S')
-    echo "[$timestamp] [$level] - $msg" >> "$file"
+    echo "[$timestamp] [$level] - $msg" >> "$log_file"
 }
 
-LogInfo() {
-    local msg="$1"
-    local file="$2"
-    LogMessage "INFO" "$msg" "$file"
-}
+# Simple wrappers
+LogInfo()  { LogMessage "INFO" "$1"; }
+LogWarn()  { LogMessage "WARN" "$1"; }
+LogError() { LogMessage "ERROR" "$1"; }
+LogFatal() { LogMessage "FATAL" "$1"; }
 
-LogWarn() {
-    local msg="$1"
-    local file="$2"
-    LogMessage "WARN" "$msg" "$file"
-}
-
-LogError() {
-    local msg="$1"
-    local file="$2"
-    LogMessage "ERROR" "$msg" "$file"
-}
-
-LogInfoCls() {
-    local msg="$1"
-    local file="$2"
-    echo -e "[${BLUE}INFO${NC}] - $msg"
-    LogMessage "INFO" "$msg" "$file"
-}
-
-LogWarnCls() {
-    local msg="$1"
-    local file="$2"
-    echo -e "[${YELLOW}WARN${NC}] - $msg"
-    LogMessage "WARN" "$msg" "$file"
-}
-
-LogErrorCls() {
-    local msg="$1"
-    local file="$2"
-    echo -e "[${RED}ERROR${NC}] - $msg"
-    LogMessage "ERROR" "$msg" "$file"
-}
+# Console + file
+LogInfoCls()  { echo -e "[${BLUE}INFO${NC}]  - $1"; LogMessage "INFO" "$1"; }
+LogWarnCls()  { echo -e "[${YELLOW}WARN${NC}]  - $1"; LogMessage "WARN" "$1"; }
+LogErrorCls() { echo -e "[${RED}ERROR${NC}] - $1"; LogMessage "ERROR" "$1"; }
