@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# ====================================== Lib function ====================================== #
+# ======================================[ Lib function ]====================================== #
 
 ensure_dir() {
     local dir="$1"
@@ -9,7 +9,12 @@ ensure_dir() {
     fi
 }
 
-dir_exists() {
+if_dir_exists() {
     local dir="$1"
     [[ -d "$dir" ]]
+}
+
+make_temp_dir() {
+    local dir="$1"
+    mktemp -d -p "$dir" tmp.XXXXXXXXXXXXXXXXXXXX
 }

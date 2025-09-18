@@ -12,10 +12,10 @@ if [[ -n "$SOFTWARELIB_LOADED" && $FORCE_RELOAD -eq 0 ]]; then
 fi
 SOFTWARELIB_LOADED=1
 
-
+# ======================================[ Lib function ]====================================== #
 
 # Lib function
-JavaInstalled() {
+java_installed() {
     local file="$1"
     if ! command -v java &>/dev/null; then
         LogFatal "Java is not installed. Install Java 17 or higher." "$file"
@@ -23,7 +23,7 @@ JavaInstalled() {
     fi
 }
 
-JavaVersion() {
+java_version() {
     local file="$1"
     JAVA_VERSION=$(java -version 2>&1 | awk -F[\".] '/version/ {print $2}')
     if (( JAVA_VERSION < 17 )); then
@@ -32,7 +32,7 @@ JavaVersion() {
     fi
 }
 
-UnzipInstalled() {
+unzip_installed() {
     local file="$1"
     if ! command -v unzip &>/dev/null; then
         LogFatal "unzip is not installed" "$file"

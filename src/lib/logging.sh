@@ -12,10 +12,10 @@ YELLOW='\033[1;33m'
 RED='\033[0;31m'
 NC='\033[0m'
 
-# ====================================== Lib function ====================================== #
+# ======================================[ Lib function ]====================================== #
 
 # Core log function
-LogMessage() {
+log_message() {
     local level="$1"
     local msg="$2"
     local timestamp
@@ -24,12 +24,12 @@ LogMessage() {
 }
 
 # Simple wrappers
-LogInfo()  { LogMessage "INFO" "$1"; }
-LogWarn()  { LogMessage "WARN" "$1"; }
-LogError() { LogMessage "ERROR" "$1"; }
-LogFatal() { LogMessage "FATAL" "$1"; }
+log_info()  { LogMessage "INFO" "$1"; }
+log_warn()  { LogMessage "WARN" "$1"; }
+log_error() { LogMessage "ERROR" "$1"; }
+log_fatal() { LogMessage "FATAL" "$1"; }
 
 # Console + file
-LogInfoCls()  { echo -e "[${BLUE}INFO${NC}]  - $1"; LogMessage "INFO" "$1"; }
-LogWarnCls()  { echo -e "[${YELLOW}WARN${NC}]  - $1"; LogMessage "WARN" "$1"; }
-LogErrorCls() { echo -e "[${RED}ERROR${NC}] - $1"; LogMessage "ERROR" "$1"; }
+log_info_cli()  { echo -e "[${BLUE}INFO${NC}]  - $1"; LogMessage "INFO" "$1"; }
+log_warn_cli()  { echo -e "[${YELLOW}WARN${NC}]  - $1"; LogMessage "WARN" "$1"; }
+log_error_cli() { echo -e "[${RED}ERROR${NC}] - $1"; LogMessage "ERROR" "$1"; }

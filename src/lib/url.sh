@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# file: url.sh
+# ======================================[ Lib function ]====================================== #
 
 # Extract original filename from URL
 get_filename_from_url() {
