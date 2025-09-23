@@ -135,7 +135,7 @@ restart_server() {
     if test_session_exist; then
         stop_server
         wait_closing_session
-        echo -e "$INFO - Server closed. Waiting 10 seconds before starting a new server..."
+        echo -e "$INFO - Server closed. Waiting 10 seconds before starting a new server"
         sleep 10
     fi
     start_server
