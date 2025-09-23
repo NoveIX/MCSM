@@ -9,12 +9,10 @@ Commands:
   -e or --exit      Stop the process
   -r or --restart   Restart the process
   -c or --console   Open the console of the process
-  -h or --help      Show this help message
-  /?                Show this help message (Windows style)
 EOF
 }
 
-# Controllo se c'è almeno un argomento
+# Check if there is at least one argument
 if [[ $# -lt 1 ]]; then
     show_help
     exit 0
@@ -34,7 +32,7 @@ ERROR="[${RED}ERROR${NC}]"
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 cd "$SCRIPT_DIR"
 
-# ======================================== Validate ======================================== #
+# ==========================================[ Validate ]========================================== #
 
 # Check if tmux is installed
 if ! command -v tmux &>/dev/null; then
@@ -52,7 +50,7 @@ fi
 
 # Check full name for the session
 if [[ ! "$SESSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
-    echo -e "$ERROR - tmux session with name  $SESSION contain a invalid characters$"
+    echo -e "$ERROR - tmux session with name  $SESSION contain a invalid characters"
     echo -e "Allowed characters:"
     echo -e "   Letters: a-z e A-Z"
     echo -e "   Numbers: 0-9"
@@ -60,12 +58,12 @@ if [[ ! "$SESSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
     exit 1
 fi
 
-# ======================================== EULA Check ======================================== #
+# =========================================[ EULA Check ]========================================= #
 
 EULA_FILE="eula.txt"
 
+# Create deafult EULA
 if [ ! -f "$EULA_FILE" ]; then
-    echo -e "$INFO - eula.txt not found. Creating default eula.txt..."
     cat <<EOF > "$EULA_FILE"
 #By changing the setting below to TRUE you are indicating your agreement to our EULA (https://aka.ms/MinecraftEULA).
 #$(date "+%a %b %d %T %Z %Y")
@@ -88,8 +86,7 @@ if [[ "$EULA_ACCEPTED" != "true" ]]; then
     fi
 fi
 
-
-# ====================================== Tmux function ======================================= #
+# =======================================[ Tmux function ]======================================== #
 
 test_session_exist() {
     tmux has-session -t "$SESSION" 2>/dev/null
@@ -97,63 +94,61 @@ test_session_exist() {
 
 session_exists() {
     if test_session_exist; then
-        echo -e "$WARN - tmux session with name $SESSION already exists."
+        echo -e "$WARN - Tmux session '$SESSION' already exists."
         exit 3
     fi
 }
 
 session_not_exists() {
     if ! test_session_exist; then
-        echo -e "$WARN - No tmux session found with the name $SESSION"
+        echo -e "$WARN - Tmux session '$SESSION' not found."
         exit 3
     fi
 }
 
 wait_closing_session() {
-    echo -e "$INFO - Waiting for session to end..."
     while test_session_exist; do
         sleep 1
     done
 }
 
-# ======================================== Run server ======================================== #
+# =========================================[ Run server ]========================================= #
 
 start_server() {
     session_exists
     tmux new-session -d -s "$SESSION" -c "$SCRIPT_DIR" "./run.sh"
-    echo -e "$INFO - Minecraft server is starting. Console in session name $SESSION"
-    echo -e "To access the Minecraft server console, run: ${GREEN}tmux attach -t ${SESSION}${NC}"
+    echo -e "$INFO - Minecraft server '$SESSION' is starting..."
 }
 
-# ======================================= Stop server ======================================== #
+# ========================================[ Stop server ]========================================= #
 
 stop_server() {
     session_not_exists
     tmux send-keys -t "$SESSION" ENTER
     tmux send-keys -t "$SESSION" "stop" ENTER
-    echo -e "$INFO - Minecraft server '${SESSION}' is stopping..."
+    echo -e "$INFO - Minecraft server '$SESSION' is stopping..."
 }
 
-# ====================================== Restart server ====================================== #
+# =======================================[ Restart server ]======================================= #
 
 restart_server() {
     if test_session_exist; then
         stop_server
         wait_closing_session
-        echo -e "$INFO - Session ended. Waiting 10 seconds before starting a new server..."
+        echo -e "$INFO - Server closed. Waiting 10 seconds before starting a new server..."
         sleep 10
     fi
     start_server
 }
 
-# ====================================== Console server ====================================== #
+# =======================================[ Console server ]======================================= #
 
 open_console() {
     session_not_exists
     tmux attach -t "$SESSION"
 }
 
-# =========================================== Menu =========================================== #
+# ======================================[ Argument options ]====================================== #
 
 # Gestione operazioni
 case "$1" in
@@ -169,11 +164,11 @@ case "$1" in
     -c|--console)
         open_console
     ;;
-    -h|--help|"/?")
+    -h|--help|"/?"|"-?")
         show_help
     ;;
     *)
-        echo "Error: Unknown arguments '$1'"
+        echo "ERROR: Unknown arguments '$1'"
         show_help
         exit 1
     ;;
