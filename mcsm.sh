@@ -5,10 +5,10 @@ show_help() {
 Usage: $0 <arguments>
 
 Commands:
-  -s or --start     Start the process
-  -e or --exit      Stop the process
-  -r or --restart   Restart the process
-  -c or --console   Open the console of the process
+  -s or --start     Start server
+  -e or --exit      Stop server
+  -r or --restart   Restart server
+  -c or --console   Open server console
 EOF
 }
 
