@@ -35,17 +35,20 @@
 ## 🚀 Installation
 
 1. **Install [tmux](https://github.com/tmux/tmux):**
+
 	- On Ubuntu/Debian: `sudo apt-get install tmux`
 	- On CentOS/Fedora: `sudo dnf install tmux`
 	- On macOS (Homebrew): `brew install tmux`
 
 2. **Clone or download this repository:**
+
 	```bash
 	git clone https://github.com/NoveIX/MCSM.git
 	cd MCSM
 	```
 
 3. **Make the script executable:**
+
 	```bash
 	chmod +x mcsm.sh
 	```
