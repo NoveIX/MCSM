@@ -88,52 +88,94 @@ fi
 
 # =======================================[ Tmux function ]======================================== #
 
-test_session_exist() {
+# Check if the tmux session exists
+session_exist() {
     tmux has-session -t "$SESSION" 2>/dev/null
 }
 
-session_exists() {
-    if test_session_exist; then
+# Exit if the tmux session exists
+exit_if_session_exists() {
+    if session_exist; then
         echo -e "$WARN - Tmux session '$SESSION' already exists."
         exit 3
     fi
 }
 
-session_not_exists() {
-    if ! test_session_exist; then
+# Exit if the tmux session is missing
+exit_if_session_missing() {
+    if ! session_exist; then
         echo -e "$WARN - Tmux session '$SESSION' not found."
         exit 3
     fi
 }
 
+# Wait until the tmux session is closed
 wait_closing_session() {
-    while test_session_exist; do
+    while session_exist; do
         sleep 1
     done
 }
 
+# ==================================[ Tmux server interaction ]=================================== #
+
+# Start, stop and enter server functions
+tmux_server_start() {
+    tmux new-session -d -s "$SESSION" -c "$SCRIPT_DIR" "./run.sh"
+}
+
+tmux_server_stop() {
+    tmux send-keys -t "$SESSION" "stop" ENTER
+}
+
+tmux_server_warn() {
+    tmux send-keys -t "$SESSION" "say Server will restart in 30 seconds. Please prepare to disconnect." ENTER
+}
+
+tmux_server_enter() {
+    tmux send-keys -t "$SESSION" ENTER
+}
+
+
 # =========================================[ Run server ]========================================= #
 
 start_server() {
-    session_exists
-    tmux new-session -d -s "$SESSION" -c "$SCRIPT_DIR" "./run.sh"
+    # Validate if the session already exists
+    exit_if_session_exists
+
+    # Start the server in a new tmux session
+    tmux_server_start
     echo -e "$INFO - Minecraft server '$SESSION' is starting..."
 }
 
 # ========================================[ Stop server ]========================================= #
 
 stop_server() {
-    session_not_exists
-    tmux send-keys -t "$SESSION" ENTER
-    tmux send-keys -t "$SESSION" "stop" ENTER
+    local status=${1:-stop}
+
+    # Validate if the session is missing
+    exit_if_session_missing
+
+    # Warn the players that the server will stop in 30 seconds
+    tmux_server_warn
+    echo -e "$INFO - Minecraft server '$SESSION' will $status in 30 seconds..."
+    sleep 30
+
+    # Clean console Debian 13
+    tmux_server_enter
+
+    # Stop the server
+    tmux_server_stop
     echo -e "$INFO - Minecraft server '$SESSION' is stopping..."
 }
 
 # =======================================[ Restart server ]======================================= #
 
 restart_server() {
-    if test_session_exist; then
-        stop_server
+    # If the session exists, stop it first
+    if session_exist; then
+        stop_server restart
+
+        # Wait until the server is fully stopped
         wait_closing_session
         echo -e "$INFO - Server closed. Waiting 10 seconds before starting a new server"
         sleep 10
@@ -144,7 +186,7 @@ restart_server() {
 # =======================================[ Console server ]======================================= #
 
 open_console() {
-    session_not_exists
+    exit_if_session_missing
     tmux attach -t "$SESSION"
 }
 
