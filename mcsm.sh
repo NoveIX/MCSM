@@ -9,160 +9,121 @@ Commands:
   -e or --exit      Stop server
   -r or --restart   Restart server
   -c or --console   Open server console
+  --mcsm-update      Update mcsm folder
 EOF
 }
 
 # Check if there is at least one argument
-if [[ $# -lt 1 ]]; then
+if [[ -z "$1" ]]; then
     show_help
     exit 0
 fi
 
-# color
-BLUE='\033[0;34m'
-YELLOW='\033[1;33m'
-RED='\033[0;31m'
-NC='\033[0m'
+# ======================================[ Global parameter ]====================================== #
 
-INFO="[${BLUE}INFO${NC}]"
-WARN="[${YELLOW}WARN${NC}]"
-ERROR="[${RED}ERROR${NC}]"
+# Self defined parameter
+CURRENT_DATE=$(date '+%Y-%m-%d')                # today
+SCRIPT_ROOT=$(dirname "$(realpath "$0")")       # $HOME/modpack/mcsm
 
-# Locate script path and set dir script path
-SCRIPT_DIR=$(dirname "$(realpath "$0")")
-cd "$SCRIPT_DIR"
+# Path
+MODPACK_DIR=$(dirname "$SCRIPT_ROOT")           # $HOME/modpack
+MCSM_DIR="$SCRIPT_ROOT"                         # $HOME/modpack/mcsm
+LOG_DIR="$MCSM_DIR/logs"                        # $HOME/modpack/mcsm/logs
+CONFIG_DIR="$MCSM_DIR/config"                   # $HOME/modpack/mcsm/config
+SOURCE_DIR="$MCSM_DIR/source"                   # $HOME/modpack/mcsm/source
+LIBRARY_DIR="$SOURCE_DIR/library"               # $HOME/modpack/mcsm/source/library
+SCRIPT_DIR="$SOURCE_DIR/script"                 # $HOME/modpack/mcsm/source/script
+KEY_DIR="$MCSM_DIR/key"                         # $HOME/modpack/mcsm/key
+TEMP_DIR="$MCSM_DIR/temp"                       # $HOME/modpack/mcsm/temp
 
-# ==========================================[ Validate ]========================================== #
+#File
+LOG_FILE="$LOG_DIR/mcsm_$CURRENT_DATE.log"      # $HOME/modpack/mcsm/logs/mcsm_YYYY-MM-DD.log
+LOG_MCSM_FILE="$LOG_DIR/server_crash.log"       # $HOME/modpack/mcsm/logs/server_crash.log
+CONFIG_FILE="$CONFIG_DIR/mcsm-common.toml"      # $HOME/modpack/mcsm/config/mcsm-common.toml
+LOADER_FILE="$SOURCE_DIR/loader.sh"             # $HOME/modpack/mcsm/source/loader.sh
+RUN_SERVER_FILE="$SCRIPT_DIR/run_server.sh"     # $HOME/modpack/mcsm/source/script/run_server.sh
+KEY_FILE_PUBLIC="$KEY_DIR/modpack_readonly.pub" # $HOME/modpack/mcsm/keys/modpack_readonly.pub
+KEY_FILE_PRIVATE="$KEY_DIR/modpack_readonly"    # $HOME/modpack/mcsm/keys/modpack_readonly
+VALIDATE_TEMP_FILE="$TEMP_DIR/validate.txt"     # $HOME/modpack/mcsm/temp/validate.txt
+RESTART_TEMP_FILE="$TEMP_DIR/restart.txt"       # $HOME/modpack/mcsm/temp/restart.txt
+CONFIG_TEMP_FILE="$TEMP_DIR/config.txt"         # $HOME/modpack/mcsm/temp/config.txt
 
-# Check if tmux is installed
-if ! command -v tmux &>/dev/null; then
-    echo -e "$ERROR - tmux is not installed. Please install tmux to run the server."
+# Minecraft file
+EULA_FILE="$MODPACK_DIR/eula.txt"               # $HOME/modpack/eula.txt
+SESSION_NAME=$(basename "$MODPACK_DIR" | tr -d '[:space:]' | tr -c '[:alnum:]_.-' '_') # Session name for tmux (es. modpack)
+
+# =====================================[ Validate directory ]===================================== #
+
+if [[ ! -d "$CONFIG_DIR" ]]; then
+    echo "ERROR: config directory not found: $CONFIG_DIR"
     exit 1
 fi
 
-# Reads the session name, ignoring comments and spaces
-SESSION=$(basename "$SCRIPT_DIR" | tr -d '[:space:]' | tr -c '[:alnum:]_.-' '_')
-
-if [ -z "$SESSION" ]; then
-    echo -e "$ERROR - tmux session with name  $SESSION is invalid"
+if [[ ! -d "$SOURCE_DIR" ]]; then
+    echo "ERROR: source directory not found: $SOURCE_DIR"
     exit 1
 fi
 
-# Check full name for the session
-if [[ ! "$SESSION" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
-    echo -e "$ERROR - tmux session with name  $SESSION contain a invalid characters"
-    echo -e "Allowed characters:"
-    echo -e "   Letters: a-z e A-Z"
-    echo -e "   Numbers: 0-9"
-    echo -e "   Symbols: -, _, ."
+if [[ ! -d "$LIBRARY_DIR" ]]; then
+    echo "ERROR: library directory not found: $LIBRARY_DIR"
     exit 1
 fi
 
-# =========================================[ EULA Check ]========================================= #
-
-EULA_FILE="eula.txt"
-
-# Create deafult EULA
-if [ ! -f "$EULA_FILE" ]; then
-    cat <<EOF > "$EULA_FILE"
-#By changing the setting below to TRUE you are indicating your agreement to our EULA (https://aka.ms/MinecraftEULA).
-#$(date "+%a %b %d %T %Z %Y")
-eula=false
-EOF
+if [[ ! -d "$SCRIPT_DIR" ]]; then
+    echo "ERROR: script directory not found: $SCRIPT_DIR"
+    exit 1
 fi
 
-# Read current EULA value
-EULA_ACCEPTED=$(grep -i 'eula=' "$EULA_FILE" | cut -d'=' -f2)
-
-# Ask to accept eula
-if [[ "$EULA_ACCEPTED" != "true" ]]; then
-    read -p "The EULA is not accepted. Do you want to accept it now? [y/N]: " REPLY
-    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
-        sed -i 's/eula=.*/eula=true/' "$EULA_FILE"
-        echo -e "${GREEN}EULA accepted.${NC}"
-    else
-        echo -e "${RED}EULA not accepted. Server will not start.${NC}"
-        exit 0
-    fi
+if [[ ! -f $LOADER_FILE ]]; then
+    echo "ERROR: loader file not found: $LOADER_FILE"
+    exit 1
 fi
 
-# =======================================[ Tmux function ]======================================== #
+mkdir -p "$LOG_DIR"
 
-test_session_exist() {
-    tmux has-session -t "$SESSION" 2>/dev/null
-}
+# ===========================================[ Loader ]=========================================== #
 
-session_exists() {
-    if test_session_exist; then
-        echo -e "$WARN - Tmux session '$SESSION' already exists."
-        exit 3
-    fi
-}
+source "$LOADER_FILE"
+load_all_libraries
 
-session_not_exists() {
-    if ! test_session_exist; then
-        echo -e "$WARN - Tmux session '$SESSION' not found."
-        exit 3
-    fi
-}
+# =====================================[ Validate software ]====================================== #
 
-wait_closing_session() {
-    while test_session_exist; do
-        sleep 1
-    done
-}
+if [[ ! -d "$TEMP_DIR" ]]; then
+    mkdir -p "$TEMP_DIR"
+    log_info "Created temp directory: $TEMP_DIR"
+fi
 
-# =========================================[ Run server ]========================================= #
+if [[ ! -f $VALIDATE_TEMP_FILE ]]; then
+    validate_software
+fi
 
-start_server() {
-    session_exists
-    tmux new-session -d -s "$SESSION" -c "$SCRIPT_DIR" "./run.sh"
-    echo -e "$INFO - Minecraft server '$SESSION' is starting..."
-}
+# ========================================[ Server config ]======================================= #
 
-# ========================================[ Stop server ]========================================= #
+source "$CONFIG_FILE"
 
-stop_server() {
-    session_not_exists
-    tmux send-keys -t "$SESSION" ENTER
-    tmux send-keys -t "$SESSION" "stop" ENTER
-    echo -e "$INFO - Minecraft server '$SESSION' is stopping..."
-}
+if ! parse_toml $CONFIG_FILE; then
+    log_error "Failed to parse config file. Exiting"
+    exit 1
+fi
 
-# =======================================[ Restart server ]======================================= #
+# =======================================[ Server script ]======================================== #
 
-restart_server() {
-    if test_session_exist; then
-        stop_server
-        wait_closing_session
-        echo -e "$INFO - Server closed. Waiting 10 seconds before starting a new server"
-        sleep 10
-    fi
-    start_server
-}
-
-# =======================================[ Console server ]======================================= #
-
-open_console() {
-    session_not_exists
-    tmux attach -t "$SESSION"
-}
-
-# ======================================[ Argument options ]====================================== #
-
-# Gestione operazioni
+# Operation management
 case "$1" in
     -s|--start)
-        start_server
+        start_minecraft_server
     ;;
     -e|--exit)
-        stop_server
+        stop_minecraft_server
     ;;
     -r|--restart)
-        restart_server
+        restart_minecraft_server
     ;;
     -c|--console)
-        open_console
+        open_minecraft_server_console
+    ;;
+    --mcsm-update)
+        mcsm_update
     ;;
     -h|--help|"/?"|"-?")
         show_help
